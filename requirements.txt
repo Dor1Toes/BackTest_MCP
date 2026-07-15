@@ -1,0 +1,8 @@
+mcp
+numpy
+pandas
+pydantic
+scikit-learn
+scipy
+statsmodels
+yfinance

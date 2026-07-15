@@ -1,0 +1,9 @@
+﻿FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY quantforge_mcp/quantforge_stock/ quantforge_stock/
+COPY quantforge_mcp/sandbox/worker/backtest_worker.py .
+RUN useradd -m worker
+USER worker
+ENTRYPOINT ["python", "backtest_worker.py"]

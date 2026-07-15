@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\Users\24161\Desktop\stock_agent\quantforge_mcp\sandbox\worker\backtest_worker.py", line 10, in <module>
+    from quantforge_stock.analytics.performance import summary_stats
+ModuleNotFoundError: No module named 'quantforge_stock'

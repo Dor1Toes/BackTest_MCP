@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from quantforge_mcp.quantforge_stock.core.position import Position
+from quantforge_stock.core.position import Position
 
 @dataclass
 class Portfolio:

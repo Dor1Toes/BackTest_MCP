@@ -5,15 +5,16 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-from quantforge_mcp.config import get_settings
-from quantforge_mcp.db import SQLiteManager
-from quantforge_mcp.db.repositories import ArtifactRepository, JobRepository, OhlcvRepository
-from quantforge_mcp.services.backtest_service import BacktestService
-from quantforge_mcp.services.data_service import DataService
-from quantforge_mcp.services.report_service import ReportService
-from quantforge_mcp.tools import (
+from config import get_settings
+from db import SQLiteManager
+from db.repositories import ArtifactRepository, JobRepository, OhlcvRepository
+from resources.compute_resources import register_compute_resources
+from resources.strategy_resources import register_strategy_resources
+from services.backtest_service import BacktestService
+from services.data_service import DataService
+from services.report_service import ReportService
+from tools import (
     register_backtest_tools,
-    register_catalog_tools,
     register_data_tools,
 )
 
@@ -29,10 +30,15 @@ ohlcv_repo = OhlcvRepository(manager.connect)
 job_repo = JobRepository(manager.connect)
 artifact_repo = ArtifactRepository(manager.connect)
 
-data_service = DataService(ohlcv_repo, allow_synthetic_fallback=settings.allow_synthetic_fallback)
+data_service = DataService(
+    ohlcv_repo,
+    data_source=settings.data_source,
+    akshare_adjust=settings.akshare_adjust,
+    allow_synthetic_fallback=settings.allow_synthetic_fallback,
+)
 backtest_service = BacktestService(
     settings=settings,
-    workspace_root=_ROOT.parent,
+    workspace_root=_ROOT,
     data_service=data_service,
     job_repo=job_repo,
     artifact_repo=artifact_repo,
@@ -40,9 +46,10 @@ backtest_service = BacktestService(
 report_service = ReportService(artifact_repo)
 
 mcp = FastMCP("quantforge")
-register_catalog_tools(mcp)
 register_data_tools(mcp, data_service)
 register_backtest_tools(mcp, backtest_service, report_service)
+register_compute_resources(mcp)
+register_strategy_resources(mcp)
 
 
 @mcp.resource("quantforge://codegen/spec")
@@ -70,8 +77,10 @@ def nvda_example() -> str:
 
 def main() -> None:
     if settings.transport == "sse":
+        print(f"[quantforge-mcp] started transport=sse host=127.0.0.1 port={settings.sse_port}", flush=True)
         mcp.run(transport="sse", host="127.0.0.1", port=settings.sse_port)
     else:
+        print("[quantforge-mcp] started transport=stdio", flush=True)
         mcp.run(transport="stdio")
 
 

@@ -7,8 +7,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.event import SignalEvent
-from quantforge_mcp.quantforge_stock.strategies.base import Strategy
+from quantforge_stock.core.event import SignalEvent
+from quantforge_stock.strategies.base import Strategy
 
 
 def _default_features(close: pd.Series) -> pd.DataFrame:

@@ -15,10 +15,10 @@ from typing import Protocol
 import pandas as pd
 import numpy as np
 
-from quantforge_mcp.quantforge_stock.backtest.broker import SimulatedBroker
-from quantforge_mcp.quantforge_stock.core.event import SignalEvent
-from quantforge_mcp.quantforge_stock.core.portfolio import Portfolio
-from quantforge_mcp.quantforge_stock.core.order import Order, OrderSide, OrderType
+from quantforge_stock.backtest.broker import SimulatedBroker
+from quantforge_stock.core.event import SignalEvent
+from quantforge_stock.core.portfolio import Portfolio
+from quantforge_stock.core.order import Order, OrderSide, OrderType
 
 class Strategy(Protocol):
     """Duck-typed strategy interface."""

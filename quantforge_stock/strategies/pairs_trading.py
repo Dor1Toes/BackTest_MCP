@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.event import SignalEvent
-from quantforge_mcp.quantforge_stock.indicators.statistical import rolling_beta, rolling_zscore
-from quantforge_mcp.quantforge_stock.strategies.base import Strategy
+from quantforge_stock.core.event import SignalEvent
+from quantforge_stock.indicators.statistical import rolling_beta, rolling_zscore
+from quantforge_stock.strategies.base import Strategy
 
 
 @dataclass

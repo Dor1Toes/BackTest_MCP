@@ -8,16 +8,20 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[3]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+APP = Path(__file__).resolve().parent
+if (APP / "quantforge_stock").exists():
+    IMPORT_ROOT = APP
+else:
+    IMPORT_ROOT = APP.parents[1]
+if str(IMPORT_ROOT) not in sys.path:
+    sys.path.insert(0, str(IMPORT_ROOT))
 
-from quantforge_mcp.quantforge_stock.analytics.performance import summary_stats
-from quantforge_mcp.quantforge_stock.backtest.broker import SimulatedBroker
-from quantforge_mcp.quantforge_stock.backtest.commission import FixedBpsCommission
-from quantforge_mcp.quantforge_stock.backtest.engine import BacktestEngine
-from quantforge_mcp.quantforge_stock.backtest.slippage import FixedBpsSlippage
-from quantforge_mcp.quantforge_stock.strategies.base import Strategy
+from quantforge_stock.analytics.performance import summary_stats
+from quantforge_stock.backtest.broker import SimulatedBroker
+from quantforge_stock.backtest.commission import FixedBpsCommission
+from quantforge_stock.backtest.engine import BacktestEngine
+from quantforge_stock.backtest.slippage import FixedBpsSlippage
+from quantforge_stock.strategies.base import Strategy
 
 
 def _load_strategy(strategy_path: Path) -> Strategy:
@@ -36,10 +40,18 @@ def _load_strategy(strategy_path: Path) -> Strategy:
     return candidates[0]()
 
 
-def _load_data(db_path: Path, symbol: str, start: str, end: str, interval: str = "1d") -> pd.DataFrame:
+def _connect_db(db_path: Path) -> "sqlite3.Connection":
     import sqlite3
 
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), timeout=30.0)
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    return conn
+
+
+def _load_data(db_path: Path, symbol: str, start: str, end: str, interval: str = "1d") -> pd.DataFrame:
+    conn = _connect_db(db_path)
     sql = """
     SELECT date, open, high, low, close, volume
     FROM ohlcv
@@ -49,7 +61,7 @@ def _load_data(db_path: Path, symbol: str, start: str, end: str, interval: str =
     frame = pd.read_sql_query(sql, conn, params=(symbol, interval, start, end))
     conn.close()
     if frame.empty:
-        raise RuntimeError("no cached data available for requested symbol/range")
+        raise RuntimeError(f"no cached data available for symbol={symbol}, range={start}..{end}")
     frame["date"] = pd.to_datetime(frame["date"])
     return frame.set_index("date")
 
@@ -64,8 +76,13 @@ def main() -> None:
     config = json.loads((job_dir / "config.json").read_text(encoding="utf-8"))
 
     strategy = _load_strategy(job_dir / "strategy.py")
-    symbol = config["symbols"][0]
-    frame = _load_data(Path(args.db), symbol, config["start"], config["end"])
+    symbols = config.get("symbols", [])
+    if not symbols:
+        raise RuntimeError("config.symbols must not be empty")
+    data: dict[str, pd.DataFrame] = {}
+    for symbol in symbols:
+        frame = _load_data(Path(args.db), symbol, config["start"], config["end"])
+        data[symbol] = frame
 
     broker = SimulatedBroker(
         commission=FixedBpsCommission(bps=config.get("commission", 0.0003) * 10_000),
@@ -73,7 +90,7 @@ def main() -> None:
     )
     engine = BacktestEngine(
         strategy=strategy,
-        data={symbol: frame},
+        data=data,
         initial_capital=config.get("initial_capital", 100000.0),
         broker=broker,
         sizing_fraction=0.95,
@@ -87,7 +104,7 @@ def main() -> None:
 
     stats = summary_stats(result.equity_curve, trades=result.trades if not result.trades.empty else None)
     payload = {
-        "symbol": symbol,
+        "symbols": symbols,
         "metrics": {
             "total_return": stats.get("total_return"),
             "annual_return": stats.get("annual_return"),

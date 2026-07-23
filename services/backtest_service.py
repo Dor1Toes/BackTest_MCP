@@ -2,12 +2,12 @@
 from pathlib import Path
 from typing import Any
 
-from quantforge_mcp.codegen import validate_strategy_code
-from quantforge_mcp.config import MCPSettings
-from quantforge_mcp.db.repositories import ArtifactRepository, JobRepository
-from quantforge_mcp.sandbox import run_backtest_in_sandbox
-from quantforge_mcp.schemas.strategy import BacktestConfig
-from quantforge_mcp.services.data_service import DataService
+from codegen import validate_strategy_code
+from config import MCPSettings
+from db.repositories import ArtifactRepository, JobRepository
+from sandbox import run_backtest_in_sandbox
+from schemas.strategy import BacktestConfig
+from services.data_service import DataService
 
 
 class BacktestService:
@@ -33,8 +33,8 @@ class BacktestService:
 
         job_id = self._job_repo.create_job(job_type="dynamic", config=config.model_dump(), strategy_code=code)
         try:
-            symbol = config.symbols[0]
-            self._data_service.get_ohlcv(symbol, config.start, config.end)
+            for symbol in config.symbols:
+                self._data_service.get_ohlcv(symbol, config.start, config.end)
             payload = run_backtest_in_sandbox(
                 settings=self._settings,
                 workspace_root=self._workspace_root,
@@ -45,7 +45,9 @@ class BacktestService:
             summary = {
                 "job_id": job_id,
                 "status": "done",
-                "symbol": payload.get("symbol", symbol),
+                "symbols": payload.get("symbols", config.symbols),
+                # Keep backward compatibility for clients still reading "symbol".
+                "symbol": (payload.get("symbols") or config.symbols)[0],
                 "strategy_name": config.name,
                 "metrics": payload.get("metrics", {}),
                 "artifact_id": job_id,
@@ -78,3 +80,29 @@ class BacktestService:
 
     def get_artifacts(self, job_id: str, kind: str | None = None) -> dict[str, Any]:
         return {"ok": True, "job_id": job_id, "artifacts": self._artifact_repo.list_artifacts(job_id, kind)}
+
+    def list_jobs(self, *, limit: int = 50, status: str = "") -> dict[str, Any]:
+        rows = self._job_repo.list_jobs(limit=limit, status=(status or None))
+        jobs: list[dict[str, Any]] = []
+        for row in rows:
+            config = row.get("config_json") or {}
+            summary = row.get("summary_json") or {}
+            metrics = summary.get("metrics") or {}
+            jobs.append(
+                {
+                    "job_id": row["job_id"],
+                    "status": row["status"],
+                    "job_type": row["job_type"],
+                    "strategy_name": summary.get("strategy_name") or config.get("name"),
+                    "symbols": summary.get("symbols") or config.get("symbols", []),
+                    "start": config.get("start"),
+                    "end": config.get("end"),
+                    "created_at": row.get("created_at"),
+                    "finished_at": row.get("finished_at"),
+                    "error_message": row.get("error_message"),
+                    "total_return": metrics.get("total_return"),
+                    "max_drawdown": metrics.get("max_drawdown"),
+                    "n_trades": metrics.get("n_trades"),
+                }
+            )
+        return {"ok": True, "count": len(jobs), "jobs": jobs}

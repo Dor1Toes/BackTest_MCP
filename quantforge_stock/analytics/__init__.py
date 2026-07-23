@@ -1,6 +1,6 @@
 """Performance analytics, tearsheets, attribution."""
-from quantforge_mcp.quantforge_stock.analytics.attribution import brinson_attribution, factor_attribution
-from quantforge_mcp.quantforge_stock.analytics.benchmark import (
+from quantforge_stock.analytics.attribution import brinson_attribution, factor_attribution
+from quantforge_stock.analytics.benchmark import (
     BenchmarkReport,
     alpha_beta,
     benchmark_report,
@@ -8,7 +8,7 @@ from quantforge_mcp.quantforge_stock.analytics.benchmark import (
     tracking_error,
     up_down_capture,
 )
-from quantforge_mcp.quantforge_stock.analytics.performance import (
+from quantforge_stock.analytics.performance import (
     annualized_return,
     annualized_vol,
     avg_win_loss,
@@ -18,7 +18,7 @@ from quantforge_mcp.quantforge_stock.analytics.performance import (
     summary_stats,
     win_rate,
 )
-from quantforge_mcp.quantforge_stock.analytics.tearsheet import Tearsheet, tearsheet_markdown, tearsheet_text
+from quantforge_stock.analytics.tearsheet import Tearsheet, tearsheet_markdown, tearsheet_text
 
 __all__ = [
     "annualized_return", "annualized_vol", "cumulative_returns",

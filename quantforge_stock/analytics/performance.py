@@ -4,9 +4,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.constants import TRADING_DAYS_YEAR
-from quantforge_mcp.quantforge_stock.risk.drawdown import max_drawdown
-from quantforge_mcp.quantforge_stock.risk.metrics import (
+from quantforge_stock.core.constants import TRADING_DAYS_YEAR
+from quantforge_stock.risk.drawdown import max_drawdown
+from quantforge_stock.risk.metrics import (
     calmar_ratio,
     omega_ratio,
     sharpe_ratio,
@@ -14,7 +14,7 @@ from quantforge_mcp.quantforge_stock.risk.metrics import (
     tail_ratio,
     ulcer_index,
 )
-from quantforge_mcp.quantforge_stock.risk.var import historical_cvar, historical_var
+from quantforge_stock.risk.var import historical_cvar, historical_var
 
 
 def annualized_return(returns: pd.Series, periods: int = TRADING_DAYS_YEAR) -> float:

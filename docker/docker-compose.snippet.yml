@@ -1,6 +1,0 @@
-﻿services:
-  quantforge-worker:
-    build:
-      context: .
-      dockerfile: quantforge_mcp/docker/Dockerfile.worker
-    image: quantforge-worker:latest

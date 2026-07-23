@@ -49,3 +49,32 @@ class JobRepository:
         item["config_json"] = json.loads(item["config_json"]) if item.get("config_json") else {}
         item["summary_json"] = json.loads(item["summary_json"]) if item.get("summary_json") else None
         return item
+
+    def list_jobs(self, *, limit: int = 50, status: str | None = None) -> list[dict[str, Any]]:
+        limit = max(1, min(int(limit), 500))
+        if status:
+            sql = """
+            SELECT job_id, status, job_type, config_json, error_message, summary_json, created_at, finished_at
+            FROM jobs
+            WHERE status = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+            """
+            args: tuple[Any, ...] = (status, limit)
+        else:
+            sql = """
+            SELECT job_id, status, job_type, config_json, error_message, summary_json, created_at, finished_at
+            FROM jobs
+            ORDER BY created_at DESC
+            LIMIT ?
+            """
+            args = (limit,)
+        with self._conn_factory() as conn:
+            rows = conn.execute(sql, args).fetchall()
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["config_json"] = json.loads(item["config_json"]) if item.get("config_json") else {}
+            item["summary_json"] = json.loads(item["summary_json"]) if item.get("summary_json") else None
+            items.append(item)
+        return items

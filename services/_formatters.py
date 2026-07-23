@@ -5,8 +5,8 @@ from typing import Any
 
 import pandas as pd
 
-from quantforge_mcp.schemas.data import OHLCVSummary, StockDataSummary
-from quantforge_mcp.schemas.indicator import IndicatorPoint, IndicatorResultSummary
+from schemas.data import OHLCVSummary, StockDataSummary
+from schemas.indicator import IndicatorPoint, IndicatorResultSummary
 
 
 def _fmt_date(ts: Any) -> str:

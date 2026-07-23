@@ -3,7 +3,7 @@
 import ast
 from dataclasses import dataclass, field
 
-from quantforge_mcp.codegen.allowlist import ALLOWED_MODULES, FORBIDDEN_CALLS
+from codegen.allowlist import ALLOWED_MODULES, FORBIDDEN_CALLS
 
 
 @dataclass

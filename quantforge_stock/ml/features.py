@@ -4,8 +4,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.indicators.statistical import realized_vol, rolling_zscore
-from quantforge_mcp.quantforge_stock.indicators.technical import atr, bollinger_bands, macd, rsi
+from quantforge_stock.indicators.statistical import realized_vol, rolling_zscore
+from quantforge_stock.indicators.technical import atr, bollinger_bands, macd, rsi
 
 
 def price_features(close: pd.Series, windows: list[int] | None = None) -> pd.DataFrame:

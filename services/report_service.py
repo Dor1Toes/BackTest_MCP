@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.analytics.tearsheet import tearsheet_markdown
+from quantforge_stock.analytics.tearsheet import tearsheet_markdown
 
-from quantforge_mcp.db.repositories import ArtifactRepository
+from db.repositories import ArtifactRepository
 
 
 class ReportService:

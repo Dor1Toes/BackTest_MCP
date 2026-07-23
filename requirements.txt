@@ -1,7 +1,9 @@
 mcp
+akshare>=1.14.0
 numpy
 pandas
 pydantic
+pydantic-settings
 scikit-learn
 scipy
 statsmodels

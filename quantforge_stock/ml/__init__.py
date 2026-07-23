@@ -7,7 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 
-if os.getenv("QUANTFORGE_ENABLE_EXPERIMENTAL_ML", "0") != "1":
+if os.getenv("QUANTFORGE_ENABLE_EXPERIMENTAL_ML", "1") != "1":
     raise ImportError(
         "quantforge_stock.ml is under active development and is disabled by default. "
         "Set QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1 to enable it explicitly."
@@ -73,5 +73,5 @@ def simulate_fama_french_factors(n: int = 252, seed: int = 42) -> pd.DataFrame:
     mu = np.array([0.0004, 0.0001, 0.0001])
     returns = rng.multivariate_normal(mu, cov, n)
     # See quantforge.data.synthetic._bday_index for the pandas 3.x rationale.
-    from quantforge_mcp.quantforge_stock.data.synthetic import _bday_index
+    from quantforge_stock.data.synthetic import _bday_index
     return pd.DataFrame(returns, index=_bday_index(n), columns=["MKT", "SMB", "HML"])

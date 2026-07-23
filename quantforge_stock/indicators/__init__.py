@@ -1,5 +1,5 @@
 """Technical and statistical indicators."""
-from quantforge_mcp.quantforge_stock.indicators.statistical import (
+from quantforge_stock.indicators.statistical import (
     adf_test,
     ewma_vol,
     garman_klass_vol,
@@ -12,7 +12,7 @@ from quantforge_mcp.quantforge_stock.indicators.statistical import (
     rolling_skew,
     rolling_zscore,
 )
-from quantforge_mcp.quantforge_stock.indicators.technical import (
+from quantforge_stock.indicators.technical import (
     adx,
     atr,
     bollinger_bands,

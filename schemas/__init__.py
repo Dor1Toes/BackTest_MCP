@@ -1,7 +1,7 @@
-﻿from quantforge_mcp.schemas.backtest import BacktestJobStatus, BacktestMetrics, BacktestResultSummary, EquityPoint
-from quantforge_mcp.schemas.data import OHLCVSummary, StockDataSummary
-from quantforge_mcp.schemas.indicator import IndicatorPoint, IndicatorResultSummary
-from quantforge_mcp.schemas.strategy import BacktestConfig, BacktestConfigValidationResult, StrategyConfig
+﻿from schemas.backtest import BacktestJobStatus, BacktestMetrics, BacktestResultSummary, EquityPoint
+from schemas.data import OHLCVSummary, StockDataSummary
+from schemas.indicator import IndicatorPoint, IndicatorResultSummary
+from schemas.strategy import BacktestConfig, BacktestConfigValidationResult, StrategyConfig
 
 __all__ = [
     "OHLCVSummary",

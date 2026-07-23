@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.constants import TRADING_DAYS_YEAR
+from quantforge_stock.core.constants import TRADING_DAYS_YEAR
 
 
 def _align(a: pd.Series, b: pd.Series) -> tuple[pd.Series, pd.Series]:

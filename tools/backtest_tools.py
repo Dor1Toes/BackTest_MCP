@@ -3,10 +3,12 @@
 from datetime import date
 import json
 
-from quantforge_mcp.codegen import validate_strategy_code as ast_validate_strategy_code
-from quantforge_mcp.schemas.strategy import BacktestConfig, BacktestConfigValidationResult
-from quantforge_mcp.services.backtest_service import BacktestService
-from quantforge_mcp.services.report_service import ReportService
+import anyio.to_thread
+
+from codegen import validate_strategy_code as ast_validate_strategy_code
+from schemas.strategy import BacktestConfig, BacktestConfigValidationResult
+from services.backtest_service import BacktestService
+from services.report_service import ReportService
 
 
 def register_backtest_tools(mcp, backtest_service: BacktestService, report_service: ReportService) -> None:
@@ -48,13 +50,22 @@ def register_backtest_tools(mcp, backtest_service: BacktestService, report_servi
         return {"ok": result.valid, "validation": result.model_dump()}
 
     @mcp.tool()
-    def run_backtest_dynamic(code: str, config_json: str) -> dict:
+    async def run_backtest_dynamic(code: str, config_json: str) -> dict:
         config = BacktestConfig(**json.loads(config_json))
-        return backtest_service.run_dynamic(code=code, config=config)
+
+        def _run() -> dict:
+            return backtest_service.run_dynamic(code=code, config=config)
+
+        return await anyio.to_thread.run_sync(_run)
 
     @mcp.tool()
     def get_backtest_result(job_id: str) -> dict:
         return backtest_service.get_result(job_id)
+
+    @mcp.tool()
+    def list_backtest_jobs(limit: int = 50, status: str = "") -> dict:
+        """List backtest jobs stored in SQLite, newest first."""
+        return backtest_service.list_jobs(limit=limit, status=status)
 
     @mcp.tool()
     def generate_backtest_report(job_id: str, title: str = "") -> dict:

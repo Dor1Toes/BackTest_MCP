@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.constants import TRADING_DAYS_YEAR
+from quantforge_stock.core.constants import TRADING_DAYS_YEAR
 
 
 def _arr(r):

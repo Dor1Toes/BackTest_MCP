@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.event import SignalEvent
-from quantforge_mcp.quantforge_stock.strategies.base import Strategy
+from quantforge_stock.core.event import SignalEvent
+from quantforge_stock.strategies.base import Strategy
 
 
 @dataclass

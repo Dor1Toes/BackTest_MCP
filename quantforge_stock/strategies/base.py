@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.core.event import EventType, SignalEvent
+from quantforge_stock.core.event import EventType, SignalEvent
 
 
 class Strategy(ABC):

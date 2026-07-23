@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-def rolling_zscores(series: pd.Series, window: int) -> pd.Series:
+def rolling_zscore(series: pd.Series, window: int) -> pd.Series:
     """Calculate rolling z-scores for a series."""
     rolling_mean = series.rolling(window).mean()
     rolling_std = series.rolling(window).std()
@@ -125,6 +125,3 @@ def garman_klass_vol(df: pd.DataFrame, window: int = 21, annualize: float = 252)
     log_co = np.log(df["close"] / df["open"])
     rs = 0.5 * log_hl**2 - (2 * np.log(2) - 1) * log_co**2
     return np.sqrt(rs.rolling(window).mean() * annualize)
-
-
-rolling_zscore = rolling_zscores

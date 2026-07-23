@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from quantforge_mcp.quantforge_stock.backtest.commission import CommissionModel, FixedBpsCommission
-from quantforge_mcp.quantforge_stock.backtest.slippage import FixedBpsSlippage, SlippageModel
-from quantforge_mcp.quantforge_stock.core.event import EventType, FillEvent
-from quantforge_mcp.quantforge_stock.core.order import Order, OrderSide, OrderStatus, OrderType
+from quantforge_stock.backtest.commission import CommissionModel, FixedBpsCommission
+from quantforge_stock.backtest.slippage import FixedBpsSlippage, SlippageModel
+from quantforge_stock.core.event import EventType, FillEvent
+from quantforge_stock.core.order import Order, OrderSide, OrderStatus, OrderType
 
 def _limit_fill_price(order: Order, bar: dict[str, float]) -> float | None:
     """Return fill price for a LIMIT if triggered this bar, else None"""

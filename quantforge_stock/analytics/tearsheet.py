@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from quantforge_mcp.quantforge_stock.analytics.performance import summary_stats
-from quantforge_mcp.quantforge_stock.risk.drawdown import drawdown_table
+from quantforge_stock.analytics.performance import summary_stats
+from quantforge_stock.risk.drawdown import drawdown_table
 
 
 @dataclass

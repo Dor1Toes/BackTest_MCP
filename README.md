@@ -37,7 +37,8 @@ BackTest_MCP/
    ├─ db/                    # SQLite 数据库目录（包含 .db/.db-wal/.db-shm）
    └─ artifacts/             # 回测产物目录（按 job_id 划分）
 
-> 注意：`storage/` 的默认位置是**相对当前工作目录（cwd）**解析的（例如你在 `C:\Users\username` 启动服务，则默认会落到 `C:\Users\username\storage\...`）。
+> 注意：默认情况下，`storage/` 会**相对当前工作目录（cwd）**解析（例如你在 `C:\Users\username` 启动服务，则默认会落到 `C:\Users\username\storage\...`）。
+> 如果在 `C:\Windows\System32` 等不可写目录启动，会自动回退到用户目录（如 `%LOCALAPPDATA%\\quantforge-mcp\\...`）。
 > 如需固定位置，建议显式设置 `QUANTFORGE_DB_PATH` / `QUANTFORGE_ARTIFACTS_DIR` 为绝对路径。
 ```
 
@@ -65,11 +66,6 @@ BackTest_MCP/
   }
 }
 ```
-
-如果你在 Cursor 的 MCP 日志里看到类似 **`'uvx' 不是内部或外部命令`**，说明 Cursor 启动 MCP 的环境里找不到 `uvx`（PATH 未包含）。
-这时可以把 `command` 改成 `uvx.exe` 的**绝对路径**（按你的系统实际路径调整，例如 `C:\\Users\\username\\.local\\bin\\uvx.exe`）。
-
-如果你更新了版本（tag/commit）但本地仍命中旧缓存，可在 `args` 前追加 `--reinstall` 强制刷新缓存（例如 `["--reinstall", "--from", "...", "quantforge-mcp"]`）。
 
 （还未发布）如果未来发布到 PyPI，可使用以下形式（示例）：
 
@@ -232,6 +228,17 @@ set QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1   # Linux/macOS 用 export
 
 - **`ModuleNotFoundError: quantforge_mcp`**  
   当前推荐直接在仓库根目录执行 `python server.py`；若使用模块方式启动，请在父目录执行并保证 `quantforge_mcp` 在 `PYTHONPATH` 中。
+
+- **Cursor 日志提示：`'uvx' 不是内部或外部命令`**  
+  说明 Cursor 启动 MCP 的环境里找不到 `uvx`（PATH 未包含）。请将 `mcpServers.quantforge.command` 改成 `uvx.exe` 的**绝对路径**（例如 `C:\\Users\\username\\.local\\bin\\uvx.exe`），或确保 `uvx` 所在目录已加入系统 PATH。
+
+- **`uvx` 从 `C:\\Windows\\System32` 等目录启动时报 `...\\storage\\db` 创建失败**  
+  这是因为默认 `storage/` 会相对当前工作目录（cwd）解析，导致尝试在系统目录下创建 `storage/db`。解决方式：
+  - 显式设置 `QUANTFORGE_DB_PATH` / `QUANTFORGE_ARTIFACTS_DIR` 为绝对路径
+  - 或设置 `QUANTFORGE_STORAGE_ROOT` 指向可写目录（将作为相对路径的基准）
+
+- **更新版本后仍命中旧缓存**  
+  使用 `uvx` 时可在参数前追加 `--reinstall` 强制刷新缓存（例如 `["--reinstall", "--from", "...", "quantforge-mcp"]`）。
 
 - **首次回测较慢**  
   首次拉取行情与初始化数据库会有冷启动开销，属于正常现象。

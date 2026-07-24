@@ -15,12 +15,18 @@
 - 暴露策略生成辅助目录（指标/统计/风控/组合函数与策略样例）。
 - 后续待开发：ML 能力完善与 Docker 化部署（如 worker/服务端容器化）。
 
+## 文档
+
+- `docs/quantforge_mcp.md`：MCP 服务器层架构与模块说明
+- `docs/quantforge_stock.md`：回测/研究库架构与模块说明
+
 ## 目录结构
 
 ```text
 BackTest_MCP/
 ├─ pyproject.toml            # 打包配置（供 uvx 从 git 运行）
 ├─ requirements.txt          # Python 依赖（开发/兼容用）
+├─ docs/                     # 架构与使用文档
 ├─ quantforge_mcp/           # MCP 服务包（server、tools、services、db、resources 等）
 ├─ quantforge_stock/         # 量化计算与策略库
 └─ storage/
@@ -35,23 +41,9 @@ BackTest_MCP/
 
 - Python 3.10+
 
-## 安装
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
 ## 启动服务
 
-### 方式 1：stdio（默认，推荐给 MCP Client）
-
-```bash
-python -m quantforge_mcp
-```
-
-### Cursor MCP 接入示例（mcpServers）
+### 方式 1：Cursor/Agent 通过 uvx 接入（推荐）
 
 将以下配置加入你的 Cursor MCP 配置（示例仅展示结构，按你的实际路径调整）：
 
@@ -70,7 +62,12 @@ python -m quantforge_mcp
 }
 ```
 
-（可选）如果未来发布到 PyPI，可使用以下形式（示例）：
+如果你在 Cursor 的 MCP 日志里看到类似 **`'uvx' 不是内部或外部命令`**，说明 Cursor 启动 MCP 的环境里找不到 `uvx`（PATH 未包含）。
+这时可以把 `command` 改成 `uvx.exe` 的**绝对路径**（按你的系统实际路径调整，例如 `C:\\Users\\username\\.local\\bin\\uvx.exe`）。
+
+如果你更新了版本（tag/commit）但本地仍命中旧缓存，可在 `args` 前追加 `--reinstall` 强制刷新缓存（例如 `["--reinstall", "--from", "...", "quantforge-mcp"]`）。
+
+（还未发布）如果未来发布到 PyPI，可使用以下形式（示例）：
 
 ```json
 {
@@ -84,7 +81,23 @@ python -m quantforge_mcp
 }
 ```
 
-### 方式 2：SSE
+### 方式 2：本地运行（开发/调试）
+
+先安装依赖：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+然后启动 stdio：
+
+```bash
+python -m quantforge_mcp
+```
+
+### 方式 3：SSE
 
 ```bash
 set QUANTFORGE_TRANSPORT=sse   # Linux/macOS 用 export

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from quantforge_stock.core.constants import TRADING_DAYS_YEAR
+from quantforge_stock.core.position import Position
 from quantforge_stock.risk.drawdown import max_drawdown
 from quantforge_stock.risk.metrics import (
     calmar_ratio,
@@ -45,8 +46,22 @@ def rolling_sharpe(returns: pd.Series, window: int = 63, periods: int = TRADING_
     return (m / s.replace(0, np.nan)) * np.sqrt(periods)
 
 
-def win_rate(trades: pd.Series) -> float:
-    t = trades.dropna()
+def win_rate(trades: pd.Series | pd.DataFrame) -> float:
+    if isinstance(trades, pd.DataFrame):
+        if trades.empty:
+            return 0.0
+        positions: dict[str, Position] = {}
+        trip_pnls: list[float] = []
+        for row in trades.sort_values(["symbol", "timestamp"]).itertuples(index=False):
+            pos = positions.setdefault(row.symbol, Position(symbol=row.symbol))
+            prev = pos.realized_pnl
+            pos.apply_fill(float(row.qty), float(row.price), float(row.commission))
+            delta = pos.realized_pnl - prev
+            if abs(delta) > 1e-12:
+                trip_pnls.append(delta)
+        t = pd.Series(trip_pnls)
+    else:
+        t = trades.dropna()
     if t.empty:
         return 0.0
     return float((t > 0).sum() / len(t))
@@ -100,4 +115,5 @@ def summary_stats(equity: pd.Series, risk_free: float = 0.0, trades: pd.DataFram
         out["total_cost"] = float(cost)
         out["cost_bps"] = float(1e4 * cost / notional) if notional > 0 else 0.0
         out["n_trades"] = int(len(trades))
+        out["win_rate"] = win_rate(trades)
     return out

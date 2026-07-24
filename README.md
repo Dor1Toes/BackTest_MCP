@@ -19,21 +19,16 @@
 
 ```text
 BackTest_MCP/
-├─ server.py                 # MCP 服务入口
-├─ config.py                 # 环境变量配置
-├─ requirements.txt          # Python 依赖
-├─ __main__.py               # 可选：python -m 启动入口
-├─ tools/                    # MCP 工具注册
-├─ services/                 # 业务服务层
-├─ db/                       # SQLite 与仓储
-├─ schemas/                  # 回测配置模型
-├─ codegen/                  # 动态策略 AST 校验/白名单
-├─ resources/                # MCP 资源文档（spec、symbol guide 等）
-├─ sandbox/                  # 本地子进程 sandbox runner + worker
+├─ pyproject.toml            # 打包配置（供 uvx 从 git 运行）
+├─ requirements.txt          # Python 依赖（开发/兼容用）
+├─ quantforge_mcp/           # MCP 服务包（server、tools、services、db、resources 等）
 ├─ quantforge_stock/         # 量化计算与策略库
 └─ storage/
    ├─ db/                    # SQLite 数据库目录（包含 .db/.db-wal/.db-shm）
    └─ artifacts/             # 回测产物目录（按 job_id 划分）
+
+> 注意：`storage/` 的默认位置是**相对当前工作目录（cwd）**解析的（例如你在 `C:\Users\username` 启动服务，则默认会落到 `C:\Users\username\storage\...`）。
+> 如需固定位置，建议显式设置 `QUANTFORGE_DB_PATH` / `QUANTFORGE_ARTIFACTS_DIR` 为绝对路径。
 ```
 
 ## 环境要求
@@ -53,7 +48,7 @@ pip install -r requirements.txt
 ### 方式 1：stdio（默认，推荐给 MCP Client）
 
 ```bash
-python server.py
+python -m quantforge_mcp
 ```
 
 ### Cursor MCP 接入示例（mcpServers）
@@ -64,8 +59,26 @@ python server.py
 {
   "mcpServers": {
     "quantforge": {
-      "command": "python",
-      "args": ["C:/Users/xxx/Desktop/BackTest_MCP/quantforge_mcp/server.py"]
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/Dor1Toes/BackTest_MCP.git@v0.1.0",
+        "quantforge-mcp"
+      ]
+    }
+  }
+}
+```
+
+（可选）如果未来发布到 PyPI，可使用以下形式（示例）：
+
+```json
+{
+  "mcpServers": {
+    "quantforge": {
+      "command": "uvx",
+      "args": ["quantforge-mcp==0.1.0"],
+      "env": { "QUANTFORGE_TRANSPORT": "stdio" }
     }
   }
 }
@@ -76,7 +89,7 @@ python server.py
 ```bash
 set QUANTFORGE_TRANSPORT=sse   # Linux/macOS 用 export
 set QUANTFORGE_SSE_PORT=8001
-python server.py
+python -m quantforge_mcp
 ```
 
 ## MCP 工具列表
@@ -111,8 +124,8 @@ python server.py
 
 所有配置项以 `QUANTFORGE_` 为前缀：
 
-- `QUANTFORGE_DB_PATH`（默认 `storage/db/quantforge.db`）
-- `QUANTFORGE_ARTIFACTS_DIR`（默认 `storage/artifacts`）
+- `QUANTFORGE_DB_PATH`（默认 `storage/db/quantforge.db`，相对 cwd）
+- `QUANTFORGE_ARTIFACTS_DIR`（默认 `storage/artifacts`，相对 cwd）
 - `QUANTFORGE_DATA_SOURCE`（默认 `auto`）
 - `QUANTFORGE_AKSHARE_ADJUST`（默认 `qfq`）
 - `QUANTFORGE_ALLOW_SYNTHETIC_FALLBACK`（默认 `true`）
@@ -120,11 +133,18 @@ python server.py
 - `QUANTFORGE_TRANSPORT`（`stdio` / `sse`，默认 `stdio`）
 - `QUANTFORGE_SSE_PORT`（默认 `8001`）
 
+Windows 示例（将数据/产物固定到你的目录）：
+
+```bash
+set QUANTFORGE_DB_PATH=C:\Users\24161\storage\db\quantforge.db
+set QUANTFORGE_ARTIFACTS_DIR=C:\Users\24161\storage\artifacts
+```
+
 ## 关于 `quantforge_stock/ml`
 
 `quantforge_stock/ml` 目前处于开发中。
 
-- 若你明确需要禁用用实验能力，请手动设置 `QUANTFORGE_ENABLE_EXPERIMENTAL_ML` = `0` 
+- 默认禁用；若你明确需要启用实验能力，请手动设置 `QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1`。
 
 ```bash
 set QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1   # Linux/macOS 用 export

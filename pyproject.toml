@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantforge-mcp"
+version = "0.1.0"
+description = "QuantForge MCP server for stock data + dynamic backtests."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp",
+  "akshare>=1.14.0",
+  "numpy",
+  "pandas",
+  "pydantic",
+  "pydantic-settings",
+  "scikit-learn",
+  "scipy",
+  "statsmodels",
+  "uvicorn",
+  "yfinance",
+]
+
+[project.scripts]
+quantforge-mcp = "quantforge_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["quantforge_mcp*", "quantforge_stock*"]
+
+[tool.setuptools.package-data]
+quantforge_mcp = [
+  "db/schema.sql",
+  "resources/*.md",
+]
+

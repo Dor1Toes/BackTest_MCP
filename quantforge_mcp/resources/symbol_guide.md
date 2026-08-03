@@ -18,12 +18,13 @@
 
 - Use **`YYYY-MM-DD`** for `start` / `end` (e.g. `2024-01-01`).
 - If `start` or `end` is empty, the server will use a default window (typically “end date minus 365 days” to “end date / today”).
-- `interval` default is `1d` (consistent with `get_stock_data` / `prefetch_stock_data`).
+- `interval` default is `1d` (consistent with `get_stock_data`).
 
 ## Cache and prefetch tips
 
 1. Call `list_cached_symbols()` to check local cache status.
-2. For multi-symbol backtests, call `prefetch_stock_data(symbols, start, end, interval)` first to reduce runtime waiting.
+2. For multi-symbol backtests, call `get_stock_data(symbols, start, end, preview=False)` first to warm the cache before running.
+3. To inspect a symbol's shape, use `get_stock_data(["SYMBOL"], preview=True)`.
 
 ## Fallback (synthetic data)
 

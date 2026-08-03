@@ -15,6 +15,7 @@
 - 提供股票数据拉取/缓存能力（默认 `auto` 美股 + A股，`yfinance` 美股，`akshare` A股）。
 - 提供动态策略代码校验与回测执行。
 - 提供回测结果查询、工件下载、Markdown 报告生成。
+- 提供策略信号扫描：读取已有 strategy/config，拉取最近行情，在最新 bar 检测信号并邮件通知。
 - 暴露策略生成辅助目录（指标/统计/风控/组合函数与策略样例）。
 - 支持多 Symbol（多标的）策略回测。
 - 后续待开发：ML 能力完善与 Docker 化部署（如 worker/服务端容器化）。
@@ -50,7 +51,9 @@ BackTest_MCP/
 
 ### 方式 1：Cursor/Agent 通过 uvx 接入（推荐）
 
-将以下配置加入你的 Cursor MCP 配置（示例仅展示结构，按你的实际路径调整）：
+将以下配置加入 Cursor MCP 配置。`@main` 跟踪仓库最新代码；若需固定版本可改为 `@v0.1.1` 等 tag。
+
+**最简配置**（`env` 可不填，回测与数据拉取照常可用）：
 
 ```json
 {
@@ -59,9 +62,43 @@ BackTest_MCP/
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/Dor1Toes/BackTest_MCP.git@v0.1.0",
+        "git+https://github.com/Dor1Toes/BackTest_MCP.git@main",
         "quantforge-mcp"
       ]
+    }
+  }
+}
+```
+
+**可选 `env`**（整块都可省略；按需取消注释并改成你的值）：
+
+| 变量 | 是否必填 | 说明 |
+|------|----------|------|
+| `QUANTFORGE_DB_PATH` / `QUANTFORGE_ARTIFACTS_DIR` | 否 | 不填时使用默认规则（cwd 下 `storage/`，不可写时自动落到用户目录，见 FAQ） |
+| `QUANTFORGE_SMTP_*` / `QUANTFORGE_NOTIFY_*` | 否 | 不填时 `scan_strategy_signals(..., notify=true)` **无法发邮件**；扫描本身仍可用 |
+
+固定数据目录示例（请替换 `/path/to/quantforge-mcp` 为本机绝对路径；Windows 也建议用正斜杠 `/`）：
+
+```json
+{
+  "mcpServers": {
+    "quantforge": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/Dor1Toes/BackTest_MCP.git@main",
+        "quantforge-mcp"
+      ],
+      "env": {
+        "QUANTFORGE_DB_PATH": "/path/to/quantforge-mcp/db/quantforge.db",
+        "QUANTFORGE_ARTIFACTS_DIR": "/path/to/quantforge-mcp/artifacts",
+        "QUANTFORGE_SMTP_HOST": "smtp.example.com",
+        "QUANTFORGE_SMTP_PORT": "587",
+        "QUANTFORGE_SMTP_USER": "your@email.com",
+        "QUANTFORGE_SMTP_PASSWORD": "your-app-password",
+        "QUANTFORGE_NOTIFY_FROM": "quantforge@example.com",
+        "QUANTFORGE_NOTIFY_TO": "you@example.com"
+      }
     }
   }
 }
@@ -109,19 +146,38 @@ python -m quantforge_mcp
 
 ### Data
 
-- `get_stock_data(symbol, start, end, interval)`：获取并汇总 OHLCV 数据。
+- `get_stock_data(symbols, start, end, interval, preview, preview_rows)`：拉取/缓存 OHLCV；单票传 `["600519"]`；`preview=False` 轻量返回，`preview=True` 附带 stats 与 head/tail 样例。
 - `list_cached_symbols()`：查看本地缓存股票代码。
-- `prefetch_stock_data(symbols, start, end, interval)`：批量预拉取数据。
 
 ### Backtest
 
-- `validate_strategy_code(code)`：策略代码 AST 安全校验。
-- `validate_backtest_config(config_json)`：回测配置校验。
-- `run_backtest_dynamic(code, config_json)`：运行动态策略回测。
+- `run_backtest_dynamic(code, config_json)`：运行动态策略回测（策略代码与 config 在加载/执行前自动校验）。
 - `list_backtest_jobs(limit, status)`：列出 SQLite 中的历史回测 job。
 - `get_backtest_result(job_id)`：查询回测结果。
 - `generate_backtest_report(job_id, title)`：生成 Markdown 报告。
 - `get_backtest_artifacts(job_id, kind)`：获取回测工件。
+
+### Monitor
+
+- `scan_strategy_signals(job_id, warmup_days_override, notify, notify_to)`：读取回测 job 产物中的策略与配置，按 `strategy.warmup()` 拉取最近行情，在最新 bar 调用 `on_bar`；若有信号且 `notify=true`，通过 SMTP 发送邮件。
+
+**产物路径**：自动定位 `storage/artifacts/{job_id}/strategy.py` 与 `config.json`（与 `run_backtest_dynamic` 产物一致）。
+
+**扫描节奏**：读取 job 产物中的 `config.json`。`rebalance=bar` 时每次扫描最新 bar；`rebalance=weekly|monthly` 时默认仍扫描最新 bar，仅当配置了 `last_rebalance_ts`（`YYYY-MM-DD`）才按周/月 cadence 过滤是否调用 `on_bar`。
+
+**邮件环境变量**（`notify=true` 时需要）：
+
+- `QUANTFORGE_SMTP_HOST` / `QUANTFORGE_SMTP_PORT`（默认 587）
+- `QUANTFORGE_SMTP_USER` / `QUANTFORGE_SMTP_PASSWORD`
+- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`）
+- `QUANTFORGE_NOTIFY_FROM` / `QUANTFORGE_NOTIFY_TO`（收件人逗号分隔）
+
+也可在工具调用时通过 `notify_to` 单次覆盖收件人。
+
+```bash
+# 示例：扫描回测产物，不发邮件
+scan_strategy_signals(job_id="36978bc8b0fb", notify=false)
+```
 
 ## 策略示例
 
@@ -132,7 +188,7 @@ python -m quantforge_mcp
 ### 示例策略代码（MomentumStrategy）
 
 ```python
-\"\"\"动量策略：60日收益率动量，正收益做多，负收益平仓。\"\"\"
+"""动量策略：60日收益率动量，正收益做多，负收益平仓。"""
 from dataclasses import dataclass
 
 import pandas as pd
@@ -145,7 +201,7 @@ class MomentumStrategy(Strategy):
     lookback: int = 60
     threshold: float = 0.0
     allow_short: bool = False
-    name: str = \"momentum\"
+    name: str = "momentum"
 
     def warmup(self) -> int:
         return self.lookback + 1
@@ -153,8 +209,8 @@ class MomentumStrategy(Strategy):
     def on_bar(self, symbol: str, bar: pd.Series, history: pd.DataFrame) -> list:
         if len(history) < self.lookback + 1:
             return []
-        past = history[\"close\"].iloc[-(self.lookback + 1)]
-        now = history[\"close\"].iloc[-1]
+        past = history["close"].iloc[-(self.lookback + 1)]
+        now = history["close"].iloc[-1]
         ret = now / past - 1.0
         direction = 0
         if ret > self.threshold:
@@ -201,12 +257,15 @@ class MomentumStrategy(Strategy):
 - `QUANTFORGE_SANDBOX_TIMEOUT_SEC`（默认 `120`）
 - `QUANTFORGE_TRANSPORT`（`stdio` / `sse`，默认 `stdio`）
 - `QUANTFORGE_SSE_PORT`（默认 `8001`）
+- `QUANTFORGE_SMTP_HOST` / `QUANTFORGE_SMTP_PORT` / `QUANTFORGE_SMTP_USER` / `QUANTFORGE_SMTP_PASSWORD`（信号邮件通知）
+- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`）
+- `QUANTFORGE_NOTIFY_FROM` / `QUANTFORGE_NOTIFY_TO`（信号邮件发件人/收件人）
 
-Windows 示例（将数据/产物固定到你的目录）：
+Windows 示例（将数据/产物固定到你的目录，路径请按本机修改）：
 
 ```bash
-set QUANTFORGE_DB_PATH=C:\Users\24161\storage\db\quantforge.db
-set QUANTFORGE_ARTIFACTS_DIR=C:\Users\24161\storage\artifacts
+set QUANTFORGE_DB_PATH=D:/data/quantforge-mcp/db/quantforge.db
+set QUANTFORGE_ARTIFACTS_DIR=D:/data/quantforge-mcp/artifacts
 ```
 
 ## 关于 `quantforge_stock/ml`
@@ -227,8 +286,7 @@ set QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1   # Linux/macOS 用 export
 ## 常见问题
 
 - **`ModuleNotFoundError: quantforge_mcp`**  
-  当前推荐直接在仓库根目录执行 `python server.py`；若使用模块方式启动，请在父目录执行并保证 `quantforge_mcp` 在 `PYTHONPATH` 中。
-
+  在仓库根目录执行 `pip install -e .` 后使用 `python -m quantforge_mcp` 或 `quantforge-mcp`；开发调试亦可用 `pip install -r requirements.txt` 再 `python -m quantforge_mcp`。
 - **Cursor 日志提示：`'uvx' 不是内部或外部命令`**  
   说明 Cursor 启动 MCP 的环境里找不到 `uvx`（PATH 未包含）。请将 `mcpServers.quantforge.command` 改成 `uvx.exe` 的**绝对路径**（例如 `C:\\Users\\username\\.local\\bin\\uvx.exe`），或确保 `uvx` 所在目录已加入系统 PATH。
 
@@ -238,7 +296,6 @@ set QUANTFORGE_ENABLE_EXPERIMENTAL_ML=1   # Linux/macOS 用 export
   - 或设置 `QUANTFORGE_STORAGE_ROOT` 指向可写目录（将作为相对路径的基准）
 
 - **更新版本后仍命中旧缓存**  
-  使用 `uvx` 时可在参数前追加 `--reinstall` 强制刷新缓存（例如 `["--reinstall", "--from", "...", "quantforge-mcp"]`）。
-
+  使用 `uvx` 时可在 `args` 最前追加 `"--reinstall"` 强制刷新缓存（例如 `["--reinstall", "--from", "git+...BackTest_MCP.git@main", "quantforge-mcp"]`）。跟踪 `@main` 时建议在升级后 reinstall 一次。
 - **首次回测较慢**  
   首次拉取行情与初始化数据库会有冷启动开销，属于正常现象。

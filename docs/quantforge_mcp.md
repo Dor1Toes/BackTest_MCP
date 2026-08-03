@@ -9,9 +9,11 @@ quantforge_mcp/
 ├─ __main__.py                 # python -m quantforge_mcp 启动入口
 ├─ server.py                   # FastMCP 入口 + 工具/资源注册（stdio/SSE）
 ├─ config.py                   # QUANTFORGE_* 配置（db/artifacts/transport 等）
-├─ codegen/                    # 动态策略 AST 校验（import allowlist）
+├─ codegen/                    # 模型生成物：策略 AST 校验/加载、config 校验/加载
 │  ├─ allowlist.py
 │  ├─ validator.py
+│  ├─ loader.py
+│  ├─ config_loader.py
 │  └─ __init__.py
 ├─ db/                         # SQLite schema/连接/仓储
 │  ├─ schema.sql
@@ -21,15 +23,21 @@ quantforge_mcp/
 │     ├─ job_repo.py
 │     ├─ artifact_repo.py
 │     └─ __init__.py
-├─ services/                   # 领域服务：数据/回测/报告
+├─ services/                   # 领域服务：数据/回测/报告/信号监控
 │  ├─ data_service.py
 │  ├─ backtest_service.py
 │  ├─ report_service.py
+│  ├─ signal_monitor_service.py
 │  ├─ _formatters.py
 │  └─ __init__.py
+├─ monitor/                    # 信号扫描：最新 bar 检测、邮件通知
+│  ├─ signal_scanner.py
+│  └─ notifiers/
+│     └─ email.py
 ├─ tools/                      # MCP tools：对外的函数接口
 │  ├─ data_tools.py
 │  ├─ backtest_tools.py
+│  ├─ monitor_tools.py
 │  └─ __init__.py
 ├─ resources/                  # MCP resources：prompt/spec/索引资源
 │  ├─ codegen_spec.md
@@ -38,7 +46,8 @@ quantforge_mcp/
 │  ├─ strategy_resources.py
 │  └─ __init__.py
 ├─ schemas/                    # Pydantic 模型：config/summary/validation 等
-│  ├─ strategy.py
+│  ├─ config.py                # BacktestConfig（含 rebalance / last_rebalance_ts）
+│  ├─ monitor.py               # ScanResult / SignalInfo
 │  ├─ backtest.py
 │  ├─ data.py
 │  ├─ indicator.py
@@ -55,7 +64,7 @@ quantforge_mcp/
 - **`quantforge_mcp/server.py`**：服务入口
   - 创建 `FastMCP("quantforge")`
   - 初始化 `MCPSettings`、SQLite schema
-  - 实例化 `DataService` / `BacktestService` / `ReportService`
+  - 实例化 `DataService` / `BacktestService` / `ReportService` / `SignalMonitorService`
   - 注册工具与资源（tools/resources）
   - **stdio**：`mcp.run(transport="stdio")`
   - **SSE**：使用 `uvicorn` 托管 `mcp.sse_app()`（兼容不同版本 `mcp` 的 `FastMCP.run()` 参数差异）
@@ -70,6 +79,7 @@ quantforge_mcp/
     - `data_source` / `akshare_adjust` / `allow_synthetic_fallback`
     - `sandbox_timeout_sec`
     - `transport` / `sse_port`
+    - `smtp_*` / `notify_from` / `notify_to`（信号邮件通知）
 
 ### DB 与仓储（SQLite）
 
@@ -93,6 +103,16 @@ quantforge_mcp/
 - **`quantforge_mcp/services/report_service.py`**：报告生成
   - 从 equity_curve 读取，生成 Markdown tearsheet
   - 产物记录为 `report_markdown`
+- **`quantforge_mcp/services/signal_monitor_service.py`**：策略信号监控
+  - 通过 `job_id` 读取 `artifacts/{job_id}/` 下的 `strategy.py` + `config.json`
+  - 按 `strategy.warmup()` 计算数据窗口，拉取最近行情
+  - 在最新 bar 调用 `on_bar`；`config.rebalance` / `config.last_rebalance_ts` 控制是否跳过非 rebalance 日
+  - 有信号时通过 SMTP 邮件通知（`QUANTFORGE_SMTP_*` / `QUANTFORGE_NOTIFY_*`）
+
+### Monitor 模块（信号扫描）
+
+- **`quantforge_mcp/monitor/signal_scanner.py`**：轻量扫描器，不走完整回测引擎；`last_rebalance_ts` 仅在 `rebalance=weekly|monthly` 且 config 中显式配置时生效
+- **`quantforge_mcp/monitor/notifiers/email.py`**：SMTP 邮件通知（`smtplib`）
 
 ### Sandbox 执行（子进程隔离）
 
@@ -107,15 +127,14 @@ quantforge_mcp/
 ### MCP 工具（tools）
 
 - **`quantforge_mcp/tools/data_tools.py`**
-  - `get_stock_data`
+  - `get_stock_data`（批量 symbols；`preview=False` 预热，`preview=True` 带摘要）
   - `list_cached_symbols`
-  - `prefetch_stock_data`
 - **`quantforge_mcp/tools/backtest_tools.py`**
-  - `validate_strategy_code`
-  - `validate_backtest_config`
-  - `run_backtest_dynamic`
+  - `run_backtest_dynamic`（策略与 config 经 `codegen` 自动校验）
   - `list_backtest_jobs` / `get_backtest_result`
   - `generate_backtest_report` / `get_backtest_artifacts`
+- **`quantforge_mcp/tools/monitor_tools.py`**
+  - `scan_strategy_signals(job_id, ...)`（扫描最新 bar 信号，可选邮件通知）
 
 ### MCP 资源（resources）
 
@@ -152,7 +171,7 @@ sequenceDiagram
 
   Client->>MCP: run_backtest_dynamic(code, config_json)
   MCP->>BT: run_dynamic(code, config)
-  BT->>BT: validate_strategy_code(AST allowlist)
+  BT->>BT: validate via codegen (AST allowlist)
   BT->>DS: get_ohlcv(symbols, start, end)
   DS->>DB: upsert cached OHLCV
   BT->>Runner: run_backtest_in_sandbox(job_id, code, config)

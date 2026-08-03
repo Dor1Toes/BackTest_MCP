@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -9,35 +8,16 @@ from pathlib import Path
 import pandas as pd
 
 APP = Path(__file__).resolve().parent
-if (APP / "quantforge_stock").exists():
-    IMPORT_ROOT = APP
-else:
-    IMPORT_ROOT = APP.parents[1]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.insert(0, str(IMPORT_ROOT))
+_REPO_ROOT = APP.parents[3] if len(APP.parents) > 3 and (APP.parents[3] / "pyproject.toml").exists() else APP.parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
+from quantforge_mcp.codegen import load_backtest_config, load_strategy
 from quantforge_stock.analytics.performance import summary_stats
 from quantforge_stock.backtest.broker import SimulatedBroker
 from quantforge_stock.backtest.commission import FixedBpsCommission
 from quantforge_stock.backtest.engine import BacktestEngine
 from quantforge_stock.backtest.slippage import FixedBpsSlippage
-from quantforge_stock.strategies.base import Strategy
-
-
-def _load_strategy(strategy_path: Path) -> Strategy:
-    spec = importlib.util.spec_from_file_location("dynamic_strategy", strategy_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("unable to create module spec")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-
-    candidates = []
-    for obj in mod.__dict__.values():
-        if isinstance(obj, type) and issubclass(obj, Strategy) and obj is not Strategy:
-            candidates.append(obj)
-    if len(candidates) != 1:
-        raise RuntimeError("dynamic strategy must contain exactly one Strategy subclass")
-    return candidates[0]()
 
 
 def _connect_db(db_path: Path) -> "sqlite3.Connection":
@@ -73,30 +53,28 @@ def main() -> None:
     args = parser.parse_args()
 
     job_dir = Path(args.job_dir)
-    config = json.loads((job_dir / "config.json").read_text(encoding="utf-8"))
+    config = load_backtest_config(source=job_dir / "config.json")
 
-    strategy = _load_strategy(job_dir / "strategy.py")
-    symbols = config.get("symbols", [])
-    if not symbols:
-        raise RuntimeError("config.symbols must not be empty")
+    strategy = load_strategy(source=job_dir / "strategy.py")
+    symbols = config.symbols
     data: dict[str, pd.DataFrame] = {}
     for symbol in symbols:
-        frame = _load_data(Path(args.db), symbol, config["start"], config["end"])
+        frame = _load_data(Path(args.db), symbol, config.start, config.end)
         data[symbol] = frame
 
     broker = SimulatedBroker(
-        commission=FixedBpsCommission(bps=config.get("commission", 0.0003) * 10_000),
-        slippage=FixedBpsSlippage(bps=config.get("slippage", 0.001) * 10_000),
+        commission=FixedBpsCommission(bps=config.commission * 10_000),
+        slippage=FixedBpsSlippage(bps=config.slippage * 10_000),
     )
     engine = BacktestEngine(
         strategy=strategy,
         data=data,
-        initial_capital=config.get("initial_capital", 100000.0),
+        initial_capital=config.initial_capital,
         broker=broker,
-        sizing_fraction=float(config.get("sizing_fraction", 0.95)),
-        target_weights=bool(config.get("target_weights", False)),
-        rebalance=str(config.get("rebalance", "bar")),
-        history_tail=(int(config["history_tail"]) if config.get("history_tail") is not None else None),
+        sizing_fraction=float(config.sizing_fraction),
+        target_weights=config.target_weights,
+        rebalance=config.rebalance,
+        history_tail=config.history_tail,
     )
     result = engine.run()
 
@@ -117,8 +95,8 @@ def main() -> None:
             "calmar_ratio": stats.get("calmar"),
             "win_rate": stats.get("win_rate"),
             "n_trades": int(len(result.trades)),
-            "initial_capital": float(config.get("initial_capital", 100000.0)),
-            "final_equity": float(result.equity_curve.iloc[-1]) if len(result.equity_curve) else float(config.get("initial_capital", 100000.0)),
+            "initial_capital": float(config.initial_capital),
+            "final_equity": float(result.equity_curve.iloc[-1]) if len(result.equity_curve) else float(config.initial_capital),
         },
         "equity_curve_path": str(equity_path),
         "trades_path": str(trades_path),

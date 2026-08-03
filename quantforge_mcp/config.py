@@ -45,6 +45,14 @@ class MCPSettings(BaseSettings):
     transport: str = "stdio"
     sse_port: int = 8001
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+    notify_from: str = ""
+    notify_to: str = ""
+
     def db_abspath(self) -> Path:
         return _resolve_storage_path(self.db_path)
 

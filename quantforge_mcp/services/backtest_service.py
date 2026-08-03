@@ -2,11 +2,11 @@
 from pathlib import Path
 from typing import Any
 
-from quantforge_mcp.codegen import validate_strategy_code
+from quantforge_mcp.codegen import StrategyLoadError, load_strategy
 from quantforge_mcp.config import MCPSettings
 from quantforge_mcp.db.repositories import ArtifactRepository, JobRepository
 from quantforge_mcp.sandbox import run_backtest_in_sandbox
-from quantforge_mcp.schemas.strategy import BacktestConfig
+from quantforge_mcp.schemas.config import BacktestConfig
 from quantforge_mcp.services.data_service import DataService
 
 
@@ -27,11 +27,18 @@ class BacktestService:
         self._artifact_repo = artifact_repo
 
     def run_dynamic(self, *, code: str, config: BacktestConfig) -> dict[str, Any]:
-        validation = validate_strategy_code(code).to_dict()
-        if not validation["valid"]:
+        try:
+            load_strategy(code=code)
+        except StrategyLoadError as exc:
+            validation = (
+                exc.validation.to_dict()
+                if exc.validation
+                else {"valid": False, "class_name": None, "errors": [str(exc)], "warnings": []}
+            )
             return {"ok": False, "validation": validation}
 
         job_id = self._job_repo.create_job(job_type="dynamic", config=config.model_dump(), strategy_code=code)
+        validation: dict[str, Any] = {"valid": True}
         try:
             for symbol in config.symbols:
                 self._data_service.get_ohlcv(symbol, config.start, config.end)

@@ -13,9 +13,11 @@ from quantforge_mcp.resources.strategy_resources import register_strategy_resour
 from quantforge_mcp.services.backtest_service import BacktestService
 from quantforge_mcp.services.data_service import DataService
 from quantforge_mcp.services.report_service import ReportService
+from quantforge_mcp.services.signal_monitor_service import SignalMonitorService
 from quantforge_mcp.tools import (
     register_backtest_tools,
     register_data_tools,
+    register_monitor_tools,
 )
 
 _ROOT = Path(__file__).resolve().parent
@@ -44,10 +46,12 @@ backtest_service = BacktestService(
     artifact_repo=artifact_repo,
 )
 report_service = ReportService(artifact_repo)
+signal_monitor_service = SignalMonitorService(settings=settings, data_service=data_service)
 
 mcp = FastMCP("quantforge")
 register_data_tools(mcp, data_service)
 register_backtest_tools(mcp, backtest_service, report_service)
+register_monitor_tools(mcp, signal_monitor_service)
 register_compute_resources(mcp)
 register_strategy_resources(mcp)
 

@@ -88,6 +88,7 @@ This is the simplest setup and works well for **single-symbol** strategies.
 - `target_weights=false` (default): `strength` in `self._signal(...)` is treated as a **signal strength hint** (0.0–1.0).
 - The engine converts it into position sizing using `sizing_fraction` (and clamps strength into a safe range internally).
 - `history_tail` is **optional**. If omitted (or set to `null`), strategies will see the full available history.
+- `last_rebalance_ts` is **optional** (`YYYY-MM-DD`). Only used by `scan_strategy_signals` when `rebalance` is `weekly` or `monthly`; omit to scan every latest bar regardless of cadence.
 
 ```json
 {
@@ -134,12 +135,11 @@ For multi-symbol strategies, you should **normalize weights** so total exposure 
    - `quantforge://compute/modules`
    - `quantforge://strategies/index` and one relevant `quantforge://strategies/{name}`
 2. Write strategy code (exactly one `Strategy` subclass) and prepare backtest `config_json` (`symbols`, `start`, `end`, capital, costs).
-3. `validate_strategy_code(code)` and fix all validation errors until `valid=true`.
-4. `validate_backtest_config(config_json)` and fix config errors/warnings.
-5. `prefetch_stock_data(symbols, start, end)` when cache is empty or stale.
-6. `run_backtest_dynamic(code, config_json)` to start the backtest job.
-7. (Optional) `list_backtest_jobs(limit, status)` to list recent jobs (useful if you lost the `job_id`).
-8. `get_backtest_result(job_id)` to inspect status/metrics.
-9. (Optional) `generate_backtest_report(job_id, title)` to generate a Markdown report.
-10. (Optional) `get_backtest_artifacts(job_id, kind)` to download artifacts (e.g. `equity_curve`, `trades`, `stdout`, `stderr`, `report_markdown`).
+3. `get_stock_data(symbols, start, end, preview=False)` when cache is empty or stale.
+4. `run_backtest_dynamic(code, config_json)` — strategy code and config are validated automatically before execution.
+5. (Optional) `list_backtest_jobs(limit, status)` to list recent jobs (useful if you lost the `job_id`).
+6. `get_backtest_result(job_id)` to inspect status/metrics.
+7. (Optional) `generate_backtest_report(job_id, title)` to generate a Markdown report.
+8. (Optional) `get_backtest_artifacts(job_id, kind)` to download artifacts (e.g. `equity_curve`, `trades`, `stdout`, `stderr`, `report_markdown`).
+9. (Optional) `scan_strategy_signals(job_id, ...)` to scan the latest bar for signals on a saved strategy.
 

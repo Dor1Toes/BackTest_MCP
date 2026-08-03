@@ -6,6 +6,9 @@ venv/
 env/
 .env
 
+# runtime data (local cache, backtest artifacts)
+storage/
+
 # packaging / build artifacts
 build/
 dist/

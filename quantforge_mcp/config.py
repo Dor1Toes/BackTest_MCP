@@ -49,6 +49,7 @@ class MCPSettings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    smtp_use_ssl: bool = False
     smtp_use_tls: bool = True
     notify_from: str = ""
     notify_to: str = ""

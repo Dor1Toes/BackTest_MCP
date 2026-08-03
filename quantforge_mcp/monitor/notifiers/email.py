@@ -16,6 +16,23 @@ def _direction_label(direction: int) -> str:
     return "平仓 (0)"
 
 
+def _use_implicit_ssl(settings: MCPSettings) -> bool:
+    """Use SMTP_SSL (implicit TLS). Auto-enabled on port 465 unless overridden."""
+    if settings.smtp_use_ssl:
+        return True
+    return int(settings.smtp_port) == 465
+
+
+def _connect_smtp(host: str, settings: MCPSettings) -> smtplib.SMTP:
+    port = int(settings.smtp_port)
+    if _use_implicit_ssl(settings):
+        return smtplib.SMTP_SSL(host, port)
+    smtp = smtplib.SMTP(host, port)
+    if settings.smtp_use_tls:
+        smtp.starttls()
+    return smtp
+
+
 class EmailNotifier:
     def __init__(self, settings: MCPSettings) -> None:
         self._settings = settings
@@ -72,11 +89,10 @@ class EmailNotifier:
         msg["To"] = ", ".join(recipients)
         msg.set_content("\n".join(lines).strip())
 
-        with smtplib.SMTP(host, int(self._settings.smtp_port)) as smtp:
-            if self._settings.smtp_use_tls:
-                smtp.starttls()
-            user = (self._settings.smtp_user or "").strip()
-            password = self._settings.smtp_password or ""
+        user = (self._settings.smtp_user or "").strip()
+        password = self._settings.smtp_password or ""
+
+        with _connect_smtp(host, self._settings) as smtp:
             if user:
                 smtp.login(user, password)
             smtp.send_message(msg)

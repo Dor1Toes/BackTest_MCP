@@ -93,7 +93,7 @@ BackTest_MCP/
         "QUANTFORGE_DB_PATH": "/path/to/quantforge-mcp/db/quantforge.db",
         "QUANTFORGE_ARTIFACTS_DIR": "/path/to/quantforge-mcp/artifacts",
         "QUANTFORGE_SMTP_HOST": "smtp.example.com",
-        "QUANTFORGE_SMTP_PORT": "587",
+        "QUANTFORGE_SMTP_PORT": "465",
         "QUANTFORGE_SMTP_USER": "your@email.com",
         "QUANTFORGE_SMTP_PASSWORD": "your-app-password",
         "QUANTFORGE_NOTIFY_FROM": "quantforge@example.com",
@@ -169,8 +169,21 @@ python -m quantforge_mcp
 
 - `QUANTFORGE_SMTP_HOST` / `QUANTFORGE_SMTP_PORT`（默认 587）
 - `QUANTFORGE_SMTP_USER` / `QUANTFORGE_SMTP_PASSWORD`
-- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`）
+- `QUANTFORGE_SMTP_USE_SSL`（默认 `false`；端口 **465** 时自动启用 **SSL** 隐式加密）
+- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`；非 SSL 模式下连接后启用 **STARTTLS**）
 - `QUANTFORGE_NOTIFY_FROM` / `QUANTFORGE_NOTIFY_TO`（收件人逗号分隔）
+
+**加密方式**（二选一，按服务商选择）：
+
+| 方式 | 典型端口 | 配置 |
+|------|----------|------|
+| **SSL**（隐式 TLS，`SMTP_SSL`） | 465 | 设 `QUANTFORGE_SMTP_PORT=465` 即可；或任意端口 + `QUANTFORGE_SMTP_USE_SSL=true` |
+| **STARTTLS**（先明文连再升级） | 587 | `QUANTFORGE_SMTP_PORT=587`，保持 `QUANTFORGE_SMTP_USE_TLS=true`（默认） |
+
+常见示例：
+
+- **QQ / 163 邮箱**：`smtp.qq.com` + 端口 **465**（自动走 SSL）
+- **Gmail / Outlook**：`smtp.gmail.com` / `smtp.office365.com` + 端口 **587** + STARTTLS
 
 也可在工具调用时通过 `notify_to` 单次覆盖收件人。
 
@@ -258,7 +271,8 @@ class MomentumStrategy(Strategy):
 - `QUANTFORGE_TRANSPORT`（`stdio` / `sse`，默认 `stdio`）
 - `QUANTFORGE_SSE_PORT`（默认 `8001`）
 - `QUANTFORGE_SMTP_HOST` / `QUANTFORGE_SMTP_PORT` / `QUANTFORGE_SMTP_USER` / `QUANTFORGE_SMTP_PASSWORD`（信号邮件通知）
-- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`）
+- `QUANTFORGE_SMTP_USE_SSL`（默认 `false`；端口 465 时自动 SSL）
+- `QUANTFORGE_SMTP_USE_TLS`（默认 `true`；非 SSL 时 STARTTLS）
 - `QUANTFORGE_NOTIFY_FROM` / `QUANTFORGE_NOTIFY_TO`（信号邮件发件人/收件人）
 
 Windows 示例（将数据/产物固定到你的目录，路径请按本机修改）：

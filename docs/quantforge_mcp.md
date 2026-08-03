@@ -79,7 +79,10 @@ quantforge_mcp/
     - `data_source` / `akshare_adjust` / `allow_synthetic_fallback`
     - `sandbox_timeout_sec`
     - `transport` / `sse_port`
-    - `smtp_*` / `notify_from` / `notify_to`（信号邮件通知）
+    - `smtp_host` / `smtp_port` / `smtp_user` / `smtp_password`
+    - `smtp_use_ssl`（默认 `false`；端口 **465** 自动走 **SSL**/`SMTP_SSL`）
+    - `smtp_use_tls`（默认 `true`；非 SSL 时连接后 **STARTTLS**）
+    - `notify_from` / `notify_to`（信号邮件通知）
 
 ### DB 与仓储（SQLite）
 
@@ -108,11 +111,14 @@ quantforge_mcp/
   - 按 `strategy.warmup()` 计算数据窗口，拉取最近行情
   - 在最新 bar 调用 `on_bar`；`config.rebalance` / `config.last_rebalance_ts` 控制是否跳过非 rebalance 日
   - 有信号时通过 SMTP 邮件通知（`QUANTFORGE_SMTP_*` / `QUANTFORGE_NOTIFY_*`）
+  - 加密：**SSL**（465 或 `SMTP_USE_SSL=true`）与 **STARTTLS**（587 等 + `SMTP_USE_TLS=true`）均支持
 
 ### Monitor 模块（信号扫描）
 
 - **`quantforge_mcp/monitor/signal_scanner.py`**：轻量扫描器，不走完整回测引擎；`last_rebalance_ts` 仅在 `rebalance=weekly|monthly` 且 config 中显式配置时生效
 - **`quantforge_mcp/monitor/notifiers/email.py`**：SMTP 邮件通知（`smtplib`）
+  - 465 或 `smtp_use_ssl=true` → `SMTP_SSL`（隐式 TLS，如 QQ/163）
+  - 其他端口 + `smtp_use_tls=true` → 明文连接后 `STARTTLS`（如 Gmail/Outlook 587）
 
 ### Sandbox 执行（子进程隔离）
 

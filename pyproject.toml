@@ -9,7 +9,7 @@ description = "QuantForge MCP server for stock data + dynamic backtests."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "mcp",
+  "mcp>=1.10,<2.0.0",
   "akshare>=1.14.0",
   "numpy",
   "pandas",
